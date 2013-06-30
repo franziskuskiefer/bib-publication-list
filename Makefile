@@ -9,7 +9,7 @@ SOURCES = $(LIB)/BibTex-0.1.2.js $(LIB)/jquery.dataTables.min.js $(SRC)/bib-publ
 all: build
 
 clean:
-	$(RM) build/*
+	$(RM) build
 
 build: $(TARGET)/bib-list.js minimize
 

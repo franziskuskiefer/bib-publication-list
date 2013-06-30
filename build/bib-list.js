@@ -1075,7 +1075,7 @@ BibTex.prototype = {
             while (strrpos(entry,'=') !== false) {
                 position = strrpos(entry, '=');
                 //Checking that the equal sign is not quoted or is not inside a equation (For example in an abstract)
-                var proceed  = true;
+                proceed  = true;
                 if (substr(entry, position-1, 1) == '\\') {
                     proceed = false;
                 }
@@ -1232,7 +1232,7 @@ BibTex.prototype = {
         //Getting the value (at is only allowd in values)
         if (strrpos(entry,'=') !== false) {
             position = strrpos(entry, '=');
-            var proceed  = true;
+            proceed  = true;
             if (substr(entry, position-1, 1) == '\\') {
                 proceed = false;
             }
@@ -1397,7 +1397,7 @@ BibTex.prototype = {
                 var tmparray     = [];
                 tmparray     = explode(',', author);
                 //The first entry must contain von and last
-                var vonlastarray = [];
+                vonlastarray = [];
                 vonlastarray = explode(' ', tmparray[0]);
                 size         = sizeof(vonlastarray);
                 if (1==size) { //Only one entry.got to be the last
@@ -2459,7 +2459,12 @@ var bibtexify = (function($) {
             .replace(/\{\\aa\}/g, '&aring;')
             .replace(/\\aa\{\}/g, '&aring;')
             .replace(/\\"a/g, '&auml;')
-            .replace(/\\"\{o\}/g, '&ouml;')
+			.replace(/\\"u/g, '&uuml;')
+            .replace(/\\"o/g, '&ouml;')
+			.replace(/\\"A/g, '&Auml;')
+			.replace(/\\"U/g, '&Uuml;')
+            .replace(/\\"O/g, '&Ouml;')
+            .replace(/\{\\ss\}/g, '&szlig;')
             .replace(/\\'e/g, '&eacute;')
             .replace(/\\'\{e\}/g, '&eacute;')
             .replace(/\\'a/g, '&aacute;')
@@ -2478,6 +2483,7 @@ var bibtexify = (function($) {
             .replace(/\{\\aa\}/g, '%C3%A5')
             .replace(/\\aa\{\}/g, '%C3%A5')
             .replace(/\\"a/g, '%C3%A4')
+			.replace(/\\"u/g, '%C3%BC')
             .replace(/\\"\{o\}/g, '%C3%B6')
             .replace(/\\'e/g, '%C3%A9')
             .replace(/\\'\{e\}/g, '%C3%A9')
@@ -2501,18 +2507,29 @@ var bibtexify = (function($) {
             if (bib.options.tweet && entryData.url) {
                 itemStr += bib2html.tweet(entryData, bib);
             }
-            return itemStr.replace(/undefined/g,
-                                   '<span class="undefined">missing<\/span>');
+            return itemStr.replace(/undefined/g, '<span class="undefined">missing<\/span>');
         },
         // converts the given author data into HTML
         authors2html: function(authorData) {
-            var authorsStr = '';
+            var authorsStr = '<span class="authors">';
             for (var index = 0; index < authorData.length; index++) {
                 if (index > 0) { authorsStr += ", "; }
                 authorsStr += authorData[index].last;
             }
+			authorsStr += '</span>';
             return htmlify(authorsStr);
         },
+		title2html: function(titleData) {
+			return "<span class='title'>" + titleData + "</span>";
+		},
+		note2html : function(noteData) {
+			// contains a \url{link}
+			if (noteData.indexOf("\\url") !== -1){
+				return noteData.replace(/\\url{(.*)}/g, '<a href=$1 target="_blank">$1</a>');
+			} else {
+				return noteData;
+			}
+		},
         // adds links to the PDF or url of the item
         links: function(entryData) {
             var itemStr = '';
@@ -2572,37 +2589,40 @@ var bibtexify = (function($) {
         },
         // helper functions for formatting different types of bibtex entries
         inproceedings: function(entryData) {
-            return this.authors2html(entryData.author) + " (" + entryData.year + "). " +
-                entryData.title + ". In <em>" + entryData.booktitle +
+            return this.title2html(entryData.title) + "<br/>" +
+				this.authors2html(entryData.author) + "<br/>" +
+                "" + entryData.booktitle +
                 ", pp. " + entryData.pages +
-                ((entryData.address)?", " + entryData.address:"") + ".<\/em>";
+                ((entryData.address)?", " + entryData.address:"");
         },
         article: function(entryData) {
-            return this.authors2html(entryData.author) + " (" + entryData.year + "). " +
-                entryData.title + ". <em>" + entryData.journal + ", " + entryData.volume +
+            return this.title2html(entryData.title) + "<br/>" +
+				this.authors2html(entryData.author) + "<br/>" +
+                entryData.journal + ", " + entryData.volume +
                 ((entryData.number)?"(" + entryData.number + ")":"")+ ", " +
-                "pp. " + entryData.pages + ". " +
-                ((entryData.address)?entryData.address + ".":"") + "<\/em>";
+                "pp. " + entryData.pages + 
+                ((entryData.address)?", "+entryData.address:"");
         },
         misc: function(entryData) {
-            return this.authors2html(entryData.author) + " (" + entryData.year + "). " +
-                entryData.title + ". " +
-                ((entryData.howpublished)?entryData.howpublished + ". ":"") +
-                ((entryData.note)?entryData.note + ".":"");
+            return this.title2html(entryData.title) + "<br/>" +
+				this.authors2html(entryData.author) + "<br/>" +
+                ((entryData.howpublished)?entryData.howpublished:"") +
+                ((entryData.note)?", "+this.note2html(entryData.note):"");
         },
         mastersthesis: function(entryData) {
-            return this.authors2html(entryData.author) + " (" + entryData.year + "). " +
-            entryData.title + ". " + entryData.type + ". " +
-            entryData.organization + ", " + entryData.school + ".";
+            return this.title2html(entryData.title) + "<br/>" +
+				this.authors2html(entryData.author) + "<br/>" +
+	            entryData.type + ", " + entryData.organization + ", " + entryData.school;
         },
         techreport: function(entryData) {
-            return this.authors2html(entryData.author) + " (" + entryData.year + "). " +
-                entryData.title + ". " + entryData.institution + ". " +
-                entryData.number + ". " + entryData.type + ".";
+            return this.title2html(entryData.title) + "<br/>" +
+				this.authors2html(entryData.author) + "<br/>" +
+				entryData.institution + ". " +
+                entryData.number + ". " + entryData.type;
         },
         book: function(entryData) {
             return this.authors2html(entryData.author) + " (" + entryData.year + "). " +
-                " <em>" + entryData.title + "<\/em>, " +
+                " <em>" + this.title2html(entryData.title) + "<\/em>, " +
                 entryData.publisher + ", " + entryData.year +
                 ((entryData.issn)?", ISBN: " + entryData.issn + ".":".");
         },
