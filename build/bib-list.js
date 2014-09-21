@@ -2544,24 +2544,28 @@ var bibtexify = (function($) {
         },
         // adds the bibtex link and the opening div with bibtex content
         bibtex: function(entryData) {
-            var itemStr = '';
-            itemStr += ' (<a title="This article as BibTeX" href="#" class="biblink">' +
-                        'bib</a>)<div class="bibinfo hidden">';
-            itemStr += '<a href="#" class="bibclose" title="Close">x</a><pre>';
-            itemStr += '@' + entryData.entryType + "{" + entryData.cite + ",\n";
+        	var bibData = "";
+        	var space = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ";
+            bibData += "@" + entryData.entryType + "{" + entryData.cite + ",<br/>";
             $.each(entryData, function(key, value) {
-                if (key == 'author') {
-                    itemStr += '  author = { ';
+                if (key == "author") {
+                    bibData += space + "author = {";
                     for (var index = 0; index < value.length; index++) {
-                        if (index > 0) { itemStr += " and "; }
-                        itemStr += value[index].last;
+                        if (index > 0) {
+                        	bibData += " and ";
+                        }
+                        bibData += value[index].last;
                     }
-                    itemStr += ' },\n';
-                } else if (key != 'entryType' && key != 'cite') {
-                    itemStr += '  ' + key + " = { " + value + " },\n";
+                    bibData += "},<br/>";
+                } else if (key != "entryType" && key != "cite") {
+                    bibData += space + key + " = {" + value.replace(/'/g, "\\'") + "},<br/>";
                 }
             });
-            itemStr += "}</pre></div>";
+            bibData += "}";
+            
+            var itemStr = '';
+            itemStr += " (<a title=\"This article as BibTeX\" href=\"javascript:callToModal(\'"+entryData.title+"\', \'"+bibData+"\')\" class=\"biblink\">bib</a>)";
+            console.log(bibData);
             return itemStr;
         },
         // generates the twitter link for the entry
@@ -2593,7 +2597,8 @@ var bibtexify = (function($) {
 				this.authors2html(entryData.author) + "<br/>" +
                 "" + entryData.booktitle +
                 ", pp. " + entryData.pages +
-                ((entryData.address)?", " + entryData.address:"");
+                ((entryData.address)?", " + entryData.address:"") +
+                "<span class='note tag'>" + ((entryData.note)?""+this.note2html(entryData.note):"") + "</span>";
         },
         article: function(entryData) {
             return this.title2html(entryData.title) + "<br/>" +
@@ -2601,30 +2606,34 @@ var bibtexify = (function($) {
                 entryData.journal + ", " + entryData.volume +
                 ((entryData.number)?"(" + entryData.number + ")":"")+ ", " +
                 "pp. " + entryData.pages + 
-                ((entryData.address)?", "+entryData.address:"");
+                ((entryData.address)?", "+entryData.address:"") +
+                "<span class='note tag'>" + ((entryData.note)?""+this.note2html(entryData.note):"") + "</span>";
         },
         misc: function(entryData) {
             return this.title2html(entryData.title) + "<br/>" +
 				this.authors2html(entryData.author) + "<br/>" +
                 ((entryData.howpublished)?entryData.howpublished:"") +
-                ((entryData.note)?", "+this.note2html(entryData.note):"");
+                "<span class='note tag'>" + ((entryData.note)?""+this.note2html(entryData.note):"") + "</span>";
         },
         mastersthesis: function(entryData) {
             return this.title2html(entryData.title) + "<br/>" +
 				this.authors2html(entryData.author) + "<br/>" +
-	            entryData.type + ", " + entryData.organization + ", " + entryData.school;
+	            entryData.type + ", " + entryData.organization + ", " + entryData.school +
+                "<span class='note tag'>" + ((entryData.note)?""+this.note2html(entryData.note):"") + "</span>";
         },
         techreport: function(entryData) {
             return this.title2html(entryData.title) + "<br/>" +
 				this.authors2html(entryData.author) + "<br/>" +
 				entryData.institution + ". " +
-                entryData.number + ". " + entryData.type;
+                entryData.number + ". " + entryData.type +
+                "<span class='note tag'>" + ((entryData.note)?""+this.note2html(entryData.note):"") + "</span>";
         },
         book: function(entryData) {
             return this.authors2html(entryData.author) + " (" + entryData.year + "). " +
                 " <em>" + this.title2html(entryData.title) + "<\/em>, " +
                 entryData.publisher + ", " + entryData.year +
-                ((entryData.issn)?", ISBN: " + entryData.issn + ".":".");
+                ((entryData.issn)?", ISBN: " + entryData.issn + ".":".") +
+                "<span class='note tag'>" + ((entryData.note)?""+this.note2html(entryData.note):"") + "</span>";
         },
         inbook: function(entryData) {
             return this.authors2html(entryData.author) + " (" + entryData.year + "). " +
@@ -2634,7 +2643,8 @@ var bibtexify = (function($) {
                 ((entryData.series)?", <em>" + entryData.series + "<\/em>":"") +
                 ((entryData.volume)?", Vol. " + entryData.volume + "":"") +
                 ((entryData.issn)?", ISBN: " + entryData.issn + "":"") +
-                ".";
+                "." +
+                "<span class='note tag'>" + ((entryData.note)?""+this.note2html(entryData.note):"") + "</span>";
         },
         // weights of the different types of entries; used when sorting
         importance: {
@@ -2676,24 +2686,24 @@ var bibtexify = (function($) {
     var EventHandlers = {
         showbib: function showbib(event) {
             $(this).next(".bibinfo").removeClass('hidden').addClass("open");
-            $("#shutter").show();
-            event.preventDefault();
+            event.stopPropagation();
         },
         hidebib: function hidebib(event) {
-            $("#shutter").hide();
-            $(".bibinfo.open").removeClass("open").addClass("hidden");
-            event.preventDefault();
+        	if ($(".bibinfo").hasClass("open")) {
+		        $(".bibinfo.open").removeClass("open").addClass("hidden");
+		        event.stopPropagation();
+            }
         }
     };
 
-    var Bib2HTML = function(data, $pubTable, options) {
+    var Bib2HTML = function(data, $pubTable, options, callback) {
         this.options = options;
         this.$pubTable = $pubTable;
         this.stats = { };
-        this.initialize(data);
+        this.initialize(data, callback);
     };
     var bibproto = Bib2HTML.prototype;
-    bibproto.initialize = function initialize(data) {
+    bibproto.initialize = function initialize(data, callback) {
         var bibtex = new BibTex();
         bibtex.content = data;
         bibtex.parse();
@@ -2741,9 +2751,25 @@ var bibtexify = (function($) {
                           [0, $thElems.eq(0).hasClass("sorting_asc")?"asc":"desc"]]);
           }
         });
-        // attach the event handlers to the bib items
-        $(".biblink", this.$pubTable).live('click', EventHandlers.showbib);
-        $(".bibclose", this.$pubTable).live('click', EventHandlers.hidebib);
+        
+        // make the table a bit nicer ...
+		$(".dataTables_filter").find("input").addClass("form-control");
+		
+		// add listener to search field to delete on ESC
+		$('input[type="text"]').keyup(function(e){
+		    if(e.keyCode == 27) {
+		        $(this).val('');
+				$(this).trigger("keyup");
+		    }
+		});
+		$('input[type="text"]').keydown(function(e){
+		    if(e.keyCode == 27) {
+		        $(this).val('');
+				$(this).trigger("keydown");
+		    }
+		});
+		
+		callback();
     };
     // updates the stats, called whenever a new bibtex entry is parsed
     bibproto.updateStats = function updateStats(item) {
@@ -2835,10 +2861,10 @@ var bibtexify = (function($) {
     //              on formatting.
     //   - bib2html: Can be used to override any of the functions or properties of
     //               the bib2html object. See above, starting around line 40.
-    return function(bibsrc, bibElemId, opts) {
+    return function(bibsrc, bibElemId, callback) {
         var options = $.extend({}, {'visualization': true,
                                 'sorting': [[0, "desc"], [1, "desc"]]},
-                                opts);
+                                null);
         var yearBit = 1, typeBit = 0;
         var $pubTable = $("#" + bibElemId).addClass("bibtable");
         if ($("#shutter").size() === 0) {
@@ -2850,14 +2876,20 @@ var bibtexify = (function($) {
         }
         var $bibSrc = $(bibsrc);
         if ($bibSrc.length) { // we found an element, use its HTML as bibtex
-            new Bib2HTML($bibSrc.html(), $pubTable, options);
+            new Bib2HTML($bibSrc.html(), $pubTable, options, callback);
             bibdownloaded();
             $bibSrc.hide();
         } else { // otherwise we assume it is a URL
             var callbackHandler = function(data) {
-                new Bib2HTML(data, $pubTable, options);
+                new Bib2HTML(data, $pubTable, options, callback);
             };
             $.get(bibsrc, callbackHandler, "text");
         }
     };
 })(jQuery);
+
+function callToModal(title, data){
+  $("#myModal #myModalLabel").html(title);
+  $("#myModal #bib-modal-body").html(data);
+  $("#myModal").modal("show");
+}
