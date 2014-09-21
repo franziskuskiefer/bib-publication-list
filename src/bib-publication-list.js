@@ -113,7 +113,6 @@ var bibtexify = (function($) {
             
             var itemStr = '';
             itemStr += " (<a title=\"This article as BibTeX\" href=\"javascript:callToModal(\'"+entryData.title+"\', \'"+bibData+"\')\" class=\"biblink\">bib</a>)";
-            console.log(bibData);
             return itemStr;
         },
         // generates the twitter link for the entry
