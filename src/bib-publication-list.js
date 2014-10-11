@@ -1,3 +1,33 @@
+function selectText(containerid) {
+	if (document.selection) {
+		var range = document.body.createTextRange();
+		range.moveToElementText(document.getElementById(containerid));
+		range.select();
+	} else if (window.getSelection) {
+        var range = document.createRange();
+        range.selectNode(document.getElementById(containerid));
+		window.getSelection().addRange(range);
+	}
+}
+ 
+// FIXME: collides with closing modal with ESC
+//$(document).keyup(function(e) {
+//	if (e.keyCode == 27) { // ESC
+//  		$('input[type="text"]').val('');
+//		$('input[type="text"]').trigger("keyup");
+//	}
+//});
+
+$(window).bind('keydown', function(event) {
+    if (event.ctrlKey || event.metaKey) {
+        switch (String.fromCharCode(event.which).toLowerCase()) {
+        case 'f':
+            event.preventDefault();
+            $('input[type="text"]').focus();
+            break;
+        }
+    }
+});
 
 var bibtexify = (function($) {
     // helper function to "compile" LaTeX special characters to HTML
@@ -23,6 +53,12 @@ var bibtexify = (function($) {
             .replace(/\}/g, '')
             .replace(/\\&/g, '&')
             .replace(/--/g, '&ndash;');
+        return str;
+    };var htmlify2 = function(str) {
+        // TODO: this is probably not a complete list..
+        str = str.replace(/"/g, "\\\\\"")
+            .replace(/\\\'/g, "\\\\\'")
+            .replace(/'/g, "\\\'");
         return str;
     };
     var uriencode = function(str) {
@@ -61,7 +97,14 @@ var bibtexify = (function($) {
         authors2html: function(authorData) {
             var authorsStr = '<span class="authors">';
             for (var index = 0; index < authorData.length; index++) {
-                if (index > 0) { authorsStr += ", "; }
+                if (index > 0 && authorData.length > 2 && index != authorData.length - 1) {
+                	authorsStr += ", ";
+                } else if (index > 0 && index == authorData.length - 1) {
+                	authorsStr += " and ";
+                }
+                if (authorData[index].first) {
+                	authorsStr += authorData[index].first + " ";
+                }
                 authorsStr += authorData[index].last;
             }
 			authorsStr += '</span>';
@@ -92,27 +135,59 @@ var bibtexify = (function($) {
         },
         // adds the bibtex link and the opening div with bibtex content
         bibtex: function(entryData) {
-        	var bibData = "";
+//        	console.log("author: "+JSON.stringify(entryData.author));
+//        	console.log("entryData\n"+JSON.stringify(entryData));
+//        	var bibData = "";
+        	var bibtexData = {};
         	var space = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ";
-            bibData += "@" + entryData.entryType + "{" + entryData.cite + ",<br/>";
+        	var popup = '<div class="modal fade" id="' + entryData.cite + '" tabindex="-1" role="dialog" aria-labelledby="' + htmlify2(entryData.title) + '" aria-hidden="true">'+
+  							'<div class="modal-dialog modal-lg">' +
+    							'<div class="modal-content">' +
+								  '<div class="modal-header">' +
+									'<h4 class="modal-title" id="myModalLabel">' + htmlify2(entryData.title) + '</h4>' +
+								  '</div>' +
+								'<div class="modal-body" id="bib-modal-body" onclick="selectText(\'bib-modal-body\')">' +
+									'<pre>';
+			var popupEnd = '</pre></div><div class="modal-footer">' +
+							'<button type="button" class="btn btn-primary" data-dismiss="modal">Close</button></div></div></div></div>';
+        	
+            popup += "@" + entryData.entryType + "{" + entryData.cite + ",<br/>";
             $.each(entryData, function(key, value) {
                 if (key == "author") {
-                    bibData += space + "author = {";
+		        	bibtexData["author"] = [];
+                    popup += space + "author\t\t= {";
                     for (var index = 0; index < value.length; index++) {
+                    	var newAuthor = "";
                         if (index > 0) {
-                        	bibData += " and ";
+                        	popup += " and <br/>                       ";
                         }
-                        bibData += value[index].last;
+                        if (value[index].first) {
+                        	newAuthor += value[index].first + " ";
+                        }
+                        newAuthor += value[index].last;
+                        bibtexData["author"].push(newAuthor);
+                        popup += value[index].last;
                     }
-                    bibData += "},<br/>";
+                    popup += "},<br/>";
                 } else if (key != "entryType" && key != "cite") {
-                    bibData += space + key + " = {" + value.replace(/'/g, "\\'") + "},<br/>";
+		        	bibtexData[key] = htmlify2(value);
+		        	var tabs = "\t";
+		        	if (key.length < 8) {
+		        		tabs += "\t";
+		        	}
+		        	if (key.length < 5) {
+		        		tabs += "\t";
+		        	}
+                    popup += space + key + tabs + "= {" + htmlify2(value) + "},<br/>"; 
                 }
             });
-            bibData += "}";
-            
+            popup += "}";
+            popup += popupEnd;
+//            console.log("bibtexData:\n"+JSON.stringify(bibtexData));
             var itemStr = '';
-            itemStr += " (<a title=\"This article as BibTeX\" href=\"javascript:callToModal(\'"+entryData.title+"\', \'"+bibData+"\')\" class=\"biblink\">bib</a>)";
+//            itemStr += " (<a title=\"This article as BibTeX\" href=\"javascript:callToModal(\'"+htmlify2(entryData.title)+"\', \'"+bibData+"\')\" class=\"biblink\">bib</a>)";
+			itemStr += " (<a title=\"This article as BibTeX\" href=\"#\" data-toggle=\"modal\" data-target=\"#" + entryData.cite + "\"\')\" class=\"biblink\">bib</a>)";
+			itemStr += popup;
             return itemStr;
         },
         // generates the twitter link for the entry
@@ -437,6 +512,7 @@ var bibtexify = (function($) {
 
 function callToModal(title, data){
   $("#myModal #myModalLabel").html(title);
-  $("#myModal #bib-modal-body").html(data);
+//  $("#myModal #bib-modal-body").html(data);
   $("#myModal").modal("show");
 }
+
